@@ -31,7 +31,6 @@
 #define _SCREENCAST_PORTAL_H
 
 #include <gdk/gdk.h>
-#include <gdk/gdkx.h>
 #include <gtk/gtk.h>
 #include <gio/gunixfdlist.h>
 

@@ -541,7 +541,7 @@ JNIEXPORT jlong JNICALL Java_com_sun_glass_ui_gtk_GtkWindow__1getNativeWindowImp
         return 0;
     }
 
-    return GDK_WINDOW_XID(win);
+    return (jlong)(uintptr_t)win;
 }
 
 } // extern "C"

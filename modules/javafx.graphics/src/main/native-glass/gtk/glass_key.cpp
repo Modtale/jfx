@@ -29,7 +29,6 @@
 #include <glib.h>
 #include "glass_general.h"
 #include <gdk/gdkkeysyms.h>
-#include <X11/XKBlib.h>
 
 #include "scancodes.h"
 #include <map>
@@ -630,39 +629,9 @@ JNIEXPORT jint JNICALL Java_com_sun_glass_ui_gtk_GtkApplication__1getKeyCodeForC
     return gdk_keyval_to_glass(keyval);
 }
 
-/*
- * Function to determine whether the Xkb extention is available. This is a
- * precaution against X protocol errors, although it should be available on all
- * Linux systems.
- */
-
-static Bool xkbInitialized = False;
-static Bool xkbAvailable = False;
-
-static Bool isXkbAvailable(Display *display) {
-    if (!xkbInitialized) {
-        int xkbMajor = XkbMajorVersion;
-        int xkbMinor = XkbMinorVersion;
-        xkbAvailable = XkbQueryExtension(display, NULL, NULL, NULL, &xkbMajor, &xkbMinor);
-        xkbInitialized = True;
-    }
-    return xkbAvailable;
-}
-
-/*
-  * Determine which keyboard layout is active. This is the group
-  * number in the Xkb state. There is no direct way to query this
-  * in Gdk.
-  */
  static gint get_current_keyboard_group() {
-     Display* display = gdk_x11_display_get_xdisplay(gdk_display_get_default());
-     if (isXkbAvailable(display)) {
-         XkbStateRec xkbState;
-         XkbGetState(display, XkbUseCoreKbd, &xkbState);
-         return xkbState.group;
-     }
      return -1;
- }
+}
 
 /*
  * Class:     com_sun_glass_ui_gtk_GtkApplication
@@ -672,36 +641,16 @@ static Bool isXkbAvailable(Display *display) {
 JNIEXPORT jint JNICALL Java_com_sun_glass_ui_gtk_GtkApplication__1isKeyLocked
   (JNIEnv * env, jobject obj, jint keyCode)
 {
-    Display* display = gdk_x11_display_get_xdisplay(gdk_display_get_default());
-    if (!isXkbAvailable(display)) {
-        return com_sun_glass_events_KeyEvent_KEY_LOCK_UNKNOWN;
-    }
-
-    Atom keyCodeAtom = None;
+    GdkKeymap *keymap = gdk_keymap_get_for_display(gdk_display_get_default());
+    gboolean locked;
     switch (keyCode) {
         case com_sun_glass_events_KeyEvent_VK_CAPS_LOCK:
-            keyCodeAtom = XInternAtom(display, "Caps Lock", True);
-            break;
-
+            locked = gdk_keymap_get_caps_lock_state(keymap); break;
         case com_sun_glass_events_KeyEvent_VK_NUM_LOCK:
-            keyCodeAtom = XInternAtom(display, "Num Lock", True);
-            break;
+            locked = gdk_keymap_get_num_lock_state(keymap); break;
+        default: return com_sun_glass_events_KeyEvent_KEY_LOCK_UNKNOWN;
     }
-
-    if (keyCodeAtom == None) {
-        return com_sun_glass_events_KeyEvent_KEY_LOCK_UNKNOWN;
-    }
-
-    Bool isLocked = False;
-    if (XkbGetNamedIndicator(display, keyCodeAtom, NULL, &isLocked, NULL, NULL)) {
-        if (isLocked) {
-            return com_sun_glass_events_KeyEvent_KEY_LOCK_ON;
-        } else {
-            return com_sun_glass_events_KeyEvent_KEY_LOCK_OFF;
-        }
-    }
-
-    return com_sun_glass_events_KeyEvent_KEY_LOCK_UNKNOWN;
+    return locked ? com_sun_glass_events_KeyEvent_KEY_LOCK_ON : com_sun_glass_events_KeyEvent_KEY_LOCK_OFF;
 }
 
 } // extern "C"

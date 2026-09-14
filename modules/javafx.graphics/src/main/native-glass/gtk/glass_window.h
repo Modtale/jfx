@@ -26,7 +26,6 @@
 #define        GLASS_WINDOW_H
 
 #include <gtk/gtk.h>
-#include <X11/Xlib.h>
 
 #include <jni.h>
 #include <set>

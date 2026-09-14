@@ -27,6 +27,7 @@
 #define _Prism_es2_defs_h_
 
 #if defined(SOLARIS) || defined(LINUX) || defined(ANDROID_NDK) /* SOLARIS || LINUX */
+#ifndef MODTALE_WAYLAND
 #define GLX_GLEXT_PROTOTYPES
 #define GLX_GLXEXT_PROTOTYPES
 #define UNIX
@@ -36,9 +37,11 @@
 #define IS_GLX
 #endif
 
+#endif
+
 #include <limits.h>
 
-#ifndef ANDROID_NDK
+#if !defined(ANDROID_NDK) && !defined(MODTALE_WAYLAND)
 #include <X11/X.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -147,6 +150,9 @@ typedef struct PixelFormatInfoRec PixelFormatInfo;
 
 /* define the structure to hold the resources and proerties of pixelformat */
 struct PixelFormatInfoRec {
+#ifdef MODTALE_WAYLAND
+    void *waylandConfig;
+#endif
 #ifdef WIN32 /* WIN32 */
     int pixelFormat;
     HWND dummyHwnd;
@@ -171,6 +177,9 @@ typedef struct DrawableInfoRec DrawableInfo;
 
 /* define the structure to hold the resources and proerties of drawable */
 struct DrawableInfoRec {
+#ifdef MODTALE_WAYLAND
+    void *waylandSurface, *waylandWindow, *waylandGdkWindow;
+#endif
     jboolean onScreen;
 
 #ifdef WIN32 /* WIN32 */
@@ -219,6 +228,9 @@ typedef struct ContextInfoRec ContextInfo;
 
 /* define the structure to hold the properties of graphics context */
 struct ContextInfoRec {
+#ifdef MODTALE_WAYLAND
+    void *waylandContext;
+#endif
 #ifdef WIN32 /* WIN32 */
     HGLRC hglrc;
 #endif /* WIN32 */

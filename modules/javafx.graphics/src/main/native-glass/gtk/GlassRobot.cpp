@@ -22,14 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/extensions/XTest.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <math.h>
 #include <gdk/gdk.h>
-#include <gdk/gdkx.h>
 
 #include <com_sun_glass_ui_GlassRobot.h>
 #include <com_sun_glass_ui_gtk_GtkRobot.h>
@@ -41,50 +37,6 @@
 #define MOUSE_BACK_BTN 8
 #define MOUSE_FORWARD_BTN 9
 
-static void checkXTest(JNIEnv* env) {
-    int32_t major_opcode, first_event, first_error;
-    int32_t  event_basep, error_basep, majorp, minorp;
-    static int32_t isXTestAvailable;
-    static gboolean checkDone = FALSE;
-    if (!checkDone) {
-        /* check if XTest is available */
-        isXTestAvailable = XQueryExtension(gdk_x11_get_default_xdisplay(), XTestExtensionName, &major_opcode, &first_event, &first_error);
-        if (isXTestAvailable) {
-            /* check if XTest version is OK */
-            XTestQueryExtension(gdk_x11_get_default_xdisplay(), &event_basep, &error_basep, &majorp, &minorp);
-            if (majorp < 2 || (majorp == 2 && minorp < 2)) {
-                    isXTestAvailable = False;
-            } else {
-                XTestGrabControl(gdk_x11_get_default_xdisplay(), True);
-            }
-        }
-        checkDone = TRUE;
-    }
-    if (!isXTestAvailable) {
-        jclass cls = env->FindClass("java/lang/UnsupportedOperationException");
-        if (env->ExceptionCheck()) return;
-        env->ThrowNew(cls, "Glass Robot needs XTest extension to work");
-    }
-}
-
-static void keyButton(jint code, gboolean press)
-{
-    Display *xdisplay = gdk_x11_get_default_xdisplay();
-    gint gdk_keyval = find_gdk_keyval_for_glass_keycode(code);
-    if (gdk_keyval == -1) {
-        return;
-    }
-    int keycode = find_gdk_keycode_for_keyval(gdk_keyval);
-    if (keycode == -1) {
-        return;
-    }
-    XTestFakeKeyEvent(xdisplay,
-                      keycode,
-                      press ? True : False,
-                      CurrentTime);
-    XSync(xdisplay, False);
-}
-
 extern "C" {
 
 /*
@@ -95,10 +47,8 @@ extern "C" {
 JNIEXPORT void JNICALL Java_com_sun_glass_ui_gtk_GtkRobot__1keyPress
   (JNIEnv *env, jobject obj, jint code)
 {
-    (void)obj;
-
-    checkXTest(env);
-    keyButton(code, TRUE);
+    env->ThrowNew(env->FindClass("java/lang/UnsupportedOperationException"),
+            "Global synthetic input is unavailable on Wayland");
 }
 
 /*
@@ -109,10 +59,8 @@ JNIEXPORT void JNICALL Java_com_sun_glass_ui_gtk_GtkRobot__1keyPress
 JNIEXPORT void JNICALL Java_com_sun_glass_ui_gtk_GtkRobot__1keyRelease
   (JNIEnv *env, jobject obj, jint code)
 {
-    (void)obj;
-
-    checkXTest(env);
-    keyButton(code, FALSE);
+    env->ThrowNew(env->FindClass("java/lang/UnsupportedOperationException"),
+            "Global synthetic input is unavailable on Wayland");
 }
 
 /*
@@ -123,41 +71,11 @@ JNIEXPORT void JNICALL Java_com_sun_glass_ui_gtk_GtkRobot__1keyRelease
 JNIEXPORT void JNICALL Java_com_sun_glass_ui_gtk_GtkRobot__1mouseMove
   (JNIEnv *env, jobject obj, jint x, jint y)
 {
-    (void)obj;
-
-    Display *xdisplay = gdk_x11_get_default_xdisplay();
-    checkXTest(env);
-    jfloat uiScale = getUIScale(gdk_screen_get_default());
-    x = rint(x * uiScale);
-    y = rint(y * uiScale);
-    XWarpPointer(xdisplay,
-            None,
-            XRootWindow(xdisplay,gdk_x11_get_default_screen()),
-            0, 0, 0, 0, x, y);
-    XSync(xdisplay, False);
+    env->ThrowNew(env->FindClass("java/lang/UnsupportedOperationException"),
+            "Global synthetic input is unavailable on Wayland");
 }
 
-static void mouseButtons(jint buttons, gboolean press)
-{
-    Display *xdisplay = gdk_x11_get_default_xdisplay();
-    if (buttons & com_sun_glass_ui_GlassRobot_MOUSE_LEFT_BTN) {
-        XTestFakeButtonEvent(xdisplay, 1, press, CurrentTime);
-    }
-    if (buttons & com_sun_glass_ui_GlassRobot_MOUSE_MIDDLE_BTN) {
-        XTestFakeButtonEvent(xdisplay, 2, press, CurrentTime);
-    }
-    if (buttons & com_sun_glass_ui_GlassRobot_MOUSE_RIGHT_BTN) {
-        XTestFakeButtonEvent(xdisplay, 3, press, CurrentTime);
-    }
-    if (buttons & com_sun_glass_ui_GlassRobot_MOUSE_BACK_BTN) {
-        XTestFakeButtonEvent(xdisplay, MOUSE_BACK_BTN, press, CurrentTime);
-    }
-    if (buttons & com_sun_glass_ui_GlassRobot_MOUSE_FORWARD_BTN) {
-        XTestFakeButtonEvent(xdisplay, MOUSE_FORWARD_BTN, press, CurrentTime);
-    }
 
-    XSync(xdisplay, False);
-}
 
 /*
  * Class:     com_sun_glass_ui_gtk_GtkRobot
@@ -167,10 +85,8 @@ static void mouseButtons(jint buttons, gboolean press)
 JNIEXPORT void JNICALL Java_com_sun_glass_ui_gtk_GtkRobot__1mousePress
   (JNIEnv *env, jobject obj, jint buttons)
 {
-    (void)obj;
-
-    checkXTest(env);
-    mouseButtons(buttons, TRUE);
+    env->ThrowNew(env->FindClass("java/lang/UnsupportedOperationException"),
+            "Global synthetic input is unavailable on Wayland");
 }
 
 /*
@@ -181,10 +97,8 @@ JNIEXPORT void JNICALL Java_com_sun_glass_ui_gtk_GtkRobot__1mousePress
 JNIEXPORT void JNICALL Java_com_sun_glass_ui_gtk_GtkRobot__1mouseRelease
   (JNIEnv *env, jobject obj, jint buttons)
 {
-    (void)obj;
-
-    checkXTest(env);
-    mouseButtons(buttons, FALSE);
+    env->ThrowNew(env->FindClass("java/lang/UnsupportedOperationException"),
+            "Global synthetic input is unavailable on Wayland");
 }
 
 /*
@@ -195,19 +109,8 @@ JNIEXPORT void JNICALL Java_com_sun_glass_ui_gtk_GtkRobot__1mouseRelease
 JNIEXPORT void JNICALL Java_com_sun_glass_ui_gtk_GtkRobot__1mouseWheel
   (JNIEnv *env, jobject obj, jint amt)
 {
-    (void)obj;
-
-    Display *xdisplay = gdk_x11_get_default_xdisplay();
-    int repeat = abs(amt);
-    int button = amt < 0 ? 4 : 5;
-    int i;
-
-    checkXTest(env);
-    for (i = 0; i < repeat; i++) {
-        XTestFakeButtonEvent(xdisplay, button, True, CurrentTime);
-        XTestFakeButtonEvent(xdisplay, button, False, CurrentTime);
-    }
-    XSync(xdisplay, False);
+    env->ThrowNew(env->FindClass("java/lang/UnsupportedOperationException"),
+            "Global synthetic input is unavailable on Wayland");
 }
 
 /*

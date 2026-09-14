@@ -22,10 +22,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#include <X11/Xlib.h>
-#include <X11/Xatom.h>
 #include <gdk/gdk.h>
-#include <gdk/gdkx.h>
+#include <gdk/gdkwayland.h>
 #include <gtk/gtk.h>
 #include <glib.h>
 #include <sstream>
@@ -98,15 +96,6 @@ extern "C" {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 static void init_threads() {
-    gboolean is_g_thread_get_initialized = FALSE;
-    if (glib_check_version(2, 32, 0)) { // < 2.32
-        if (!glib_check_version(2, 20, 0)) {
-            is_g_thread_get_initialized = g_thread_get_initialized();
-        }
-        if (!is_g_thread_get_initialized) {
-            g_thread_init(NULL);
-        }
-    }
     gdk_threads_init();
 }
 #pragma GCC diagnostic pop
@@ -157,11 +146,8 @@ JNIEXPORT jint JNICALL Java_com_sun_glass_ui_gtk_GtkApplication__1queryLibrary
     (void)suggestedVersion;
     (void)verbose;
 
-    Display *display = XOpenDisplay(NULL);
-    if (display == NULL) {
-        return com_sun_glass_ui_gtk_GtkApplication_QUERY_NO_DISPLAY;
-    }
-    XCloseDisplay(display);
+    if (getenv("WAYLAND_DISPLAY") == NULL) return com_sun_glass_ui_gtk_GtkApplication_QUERY_NO_DISPLAY;
+    gdk_set_allowed_backends("wayland");
 
     return com_sun_glass_ui_gtk_GtkApplication_QUERY_USE_CURRENT;
 }
@@ -181,7 +167,6 @@ JNIEXPORT void JNICALL Java_com_sun_glass_ui_gtk_GtkApplication__1init
     process_events_prev = (GdkEventFunc) handler;
     disableGrab = (gboolean) _disableGrab;
 
-    glass_gdk_x11_display_set_window_scale(gdk_display_get_default(), 1);
     gdk_event_handler_set(process_events, NULL, NULL);
 
     GdkScreen *default_gdk_screen = gdk_screen_get_default();
@@ -192,8 +177,6 @@ JNIEXPORT void JNICALL Java_com_sun_glass_ui_gtk_GtkApplication__1init
                          G_CALLBACK(screen_settings_changed), NULL);
     }
 
-    GdkWindow *root = gdk_screen_get_root_window(default_gdk_screen);
-    gdk_window_set_events(root, static_cast<GdkEventMask>(gdk_window_get_events(root) | GDK_PROPERTY_CHANGE_MASK));
 
     platformSupport = new PlatformSupport(env, obj);
 
@@ -215,36 +198,7 @@ JNIEXPORT void JNICALL Java_com_sun_glass_ui_gtk_GtkApplication__1runLoop
     env->CallVoidMethod(launchable, jRunnableRun);
     CHECK_JNI_EXCEPTION(env);
 
-    // GTK installs its own X error handler that conflicts with AWT.
-    // During drag and drop, AWT hides errors so we need to hide them
-    // to avoid exit()'ing.  It's not clear that we don't want to hide
-    // X error all the time, otherwise FX will exit().
-    //
-    // A better solution would be to coordinate with AWT and save and
-    // restore the X handler.
-
-    // Disable X error handling
-#ifndef VERBOSE
-    if (!noErrorTrap) {
-        gdk_error_trap_push();
-    }
-#endif
-
     gtk_main();
-
-    // When the last JFrame closes and DISPOSE_ON_CLOSE is specified,
-    // Java exits with an X error. X error are hidden during the FX
-    // event loop and should be restored when the event loop exits. Unfortunately,
-    // this is too early. The fix is to never restore X errors.
-    //
-    // See JDK-8126059 & JDK-8118745
-
-    // Restore X error handling
-    // #ifndef VERBOSE
-    //     if (!noErrorTrap) {
-    //         gdk_error_trap_pop();
-    //     }
-    // #endif
 
     gdk_threads_leave();
 
@@ -465,8 +419,42 @@ bool is_window_enabled_for_event(GdkWindow * window, WindowContext *ctx, gint ev
     return TRUE;
 }
 
+static GdkEvent* modtale_current_event = NULL;
+struct ModtaleEventScope {
+    GdkEvent* previous;
+    ModtaleEventScope(GdkEvent* event) : previous(modtale_current_event) { modtale_current_event = event; }
+    ~ModtaleEventScope() { modtale_current_event = previous; }
+};
+
+extern "C" JNIEXPORT int modtale_glass_is_wayland() {
+    GdkDisplay* display = gdk_display_get_default();
+    return display != NULL && GDK_IS_WAYLAND_DISPLAY(display);
+}
+
+extern "C" JNIEXPORT int modtale_glass_begin_move_resize(int direction) {
+    GdkEvent* event = modtale_current_event;
+    if (!modtale_glass_is_wayland() || !event || direction < 0 || direction > 8) return 0;
+    if (event->type != GDK_BUTTON_PRESS && event->type != GDK_MOTION_NOTIFY) return 0;
+    GdkWindow* window = event->any.window;
+    GdkDevice* device = gdk_event_get_device(event);
+    if (!window || !device) return 0;
+    gdouble x = 0, y = 0;
+    gdk_event_get_root_coords(event, &x, &y);
+    guint32 time = gdk_event_get_time(event);
+    if (direction == 8) {
+        gdk_window_begin_move_drag_for_device(window, device, 1, (gint)x, (gint)y, time);
+    } else {
+        const GdkWindowEdge edges[] = {GDK_WINDOW_EDGE_NORTH_WEST, GDK_WINDOW_EDGE_NORTH,
+            GDK_WINDOW_EDGE_NORTH_EAST, GDK_WINDOW_EDGE_EAST, GDK_WINDOW_EDGE_SOUTH_EAST,
+            GDK_WINDOW_EDGE_SOUTH, GDK_WINDOW_EDGE_SOUTH_WEST, GDK_WINDOW_EDGE_WEST};
+        gdk_window_begin_resize_drag_for_device(window, edges[direction], device, 1, (gint)x, (gint)y, time);
+    }
+    return 1;
+}
+
 static void process_events(GdkEvent* event, gpointer data)
 {
+    ModtaleEventScope eventScope(event);
     GdkWindow* window = event->any.window;
     WindowContext *ctx = window != NULL ? (WindowContext*)
         g_object_get_data(G_OBJECT(window), GDK_WINDOW_DATA_CONTEXT) : NULL;

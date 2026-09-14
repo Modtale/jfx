@@ -28,7 +28,6 @@
 #endif
 
 #include <dlfcn.h>
-#include <X11/Xlib.h>
 #include "screencast_pipewire.h"
 #include "glass_key.h"
 
@@ -1194,16 +1193,9 @@ static int getLettersScancode(gint gdk_keyval) {
         return -1;
     }
 
-    // Gdk keyval and Xlib keysym shares the same value for variables
-    // This find_gdk_keycode_for_keyval > XKeycodeToKeysym trick
-    // allows us to map the actual keyboard layout to QWERTY
-    // and get its scancode later on.
-    // (e.g. QWERTZ Z-Y swap)
-    KeySym ks = XKeycodeToKeysym(gdk_x11_get_default_xdisplay(), keycode, 0);
-
-    if (ks == NoSymbol) {
-        return -1;
-    }
+    GdkKeymapKey key = { .keycode = (guint)keycode, .group = 0, .level = 0 };
+    guint ks = gdk_keymap_lookup_key(gdk_keymap_get_for_display(gdk_display_get_default()), &key);
+    if (!ks) return -1;
 
     return find_scancode_for_gdk_keyval(ks);
 }

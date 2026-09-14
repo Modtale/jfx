@@ -111,14 +111,14 @@ setupTools("linux_gtk3",
 
         ByteArrayOutputStream results2 = new ByteArrayOutputStream();
         execOps.exec { spec ->
-            commandLine("${toolchainDir}pkg-config", "--cflags", "gtk+-3.0", "gthread-2.0", "xtst", "gio-unix-2.0")
+            commandLine("${toolchainDir}pkg-config", "--cflags", "gtk+-3.0", "gthread-2.0", "gio-unix-2.0")
             setStandardOutput(results2);
         }
         propFile << "cflagsGTK3=" << results2.toString().trim() << "\n";
 
         ByteArrayOutputStream results4 = new ByteArrayOutputStream();
         execOps.exec { spec ->
-            commandLine("${toolchainDir}pkg-config", "--libs", "gtk+-3.0", "gthread-2.0", "xtst", "gio-unix-2.0")
+            commandLine("${toolchainDir}pkg-config", "--libs", "gtk+-3.0", "gthread-2.0", "gio-unix-2.0")
             setStandardOutput(results4);
         }
         propFile << "libsGTK3=" << results4.toString().trim()  << "\n";
@@ -221,7 +221,7 @@ LINUX.glass.glass.nativeSource = ft_gtk_launcher.getFiles()
 LINUX.glass.glass.compiler = compiler
 LINUX.glass.glass.ccFlags = [cppFlags, "-Werror"].flatten()
 LINUX.glass.glass.linker = linker
-LINUX.glass.glass.linkFlags = IS_STATIC_BUILD? linkFlags : [linkFlags, "-lX11", "-ldl"].flatten()
+LINUX.glass.glass.linkFlags = IS_STATIC_BUILD? linkFlags : [linkFlags, "-ldl"].flatten()
 LINUX.glass.glass.lib = "glass"
 
 LINUX.glass.glassgtk3 = [:]
@@ -270,13 +270,12 @@ LINUX.iio.lib = "javafx_iio"
 LINUX.prismES2 = [:]
 LINUX.prismES2.nativeSource = [
     file("${project("graphics").projectDir}/src/main/native-prism-es2"),
-    file("${project("graphics").projectDir}/src/main/native-prism-es2/GL"),
-    file("${project("graphics").projectDir}/src/main/native-prism-es2/x11")
+    file("${project("graphics").projectDir}/src/main/native-prism-es2/GL")
 ]
 LINUX.prismES2.compiler = compiler
-LINUX.prismES2.ccFlags = ["-DLINUX", cFlags].flatten()
+LINUX.prismES2.ccFlags = ["-DLINUX", "-DMODTALE_WAYLAND", cFlags, gtk3CCFlags].flatten()
 LINUX.prismES2.linker = linker
-LINUX.prismES2.linkFlags =IS_STATIC_BUILD ? linkFlags : [linkFlags, "-lX11", "-lXxf86vm", "-lGL"].flatten()
+LINUX.prismES2.linkFlags =IS_STATIC_BUILD ? linkFlags : [linkFlags, gtk3LinkFlags, "-lOpenGL", "-lEGL", "-lwayland-egl", "-lwayland-client"].flatten()
 LINUX.prismES2.lib = "prism_es2"
 
 def closedDir = file("$projectDir/../rt-closed")

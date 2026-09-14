@@ -27,116 +27,17 @@
 #include "glass_screen.h"
 #include "glass_general.h"
 
-#include <X11/Xatom.h>
 #include <gdk/gdk.h>
-#include <gdk/gdkx.h>
 
 jfloat OverrideUIScale = -1.0f;
 int DEFAULT_DPI = 96;
 
-static guint get_current_desktop(GdkScreen *screen) {
-    Display* display = gdk_x11_display_get_xdisplay(gdk_display_get_default());
-    Atom currentDesktopAtom = XInternAtom(display, "_NET_CURRENT_DESKTOP", True);
-    guint ret = 0;
-
-    Atom type;
-    int format;
-    gulong num, left;
-    unsigned long *data = NULL;
-
-    if (currentDesktopAtom == None) {
-        return 0;
-    }
-
-    int result = XGetWindowProperty(display,
-                                    GDK_WINDOW_XID(gdk_screen_get_root_window(screen)),
-                                    currentDesktopAtom, 0, G_MAXLONG, False, XA_CARDINAL,
-                                    &type, &format, &num, &left, (unsigned char **)&data);
-
-    if ((result == Success) && (data != NULL)) {
-        if (type == XA_CARDINAL && format == 32) {
-            ret = data[0];
-        }
-
-        XFree(data);
-    }
-
-    return ret;
-
-}
-
-static GdkRectangle get_screen_workarea(GdkScreen *screen) {
-    Display* display = gdk_x11_display_get_xdisplay(gdk_display_get_default());
-    GdkRectangle ret = { 0, 0, gdk_screen_get_width(screen), gdk_screen_get_height(screen)};
-
-    Atom workareaAtom = XInternAtom(display, "_NET_WORKAREA", True);
-
-    Atom type;
-    int format;
-    gulong num, left;
-    unsigned long *data = NULL;
-
-    if (workareaAtom == None) {
-        return ret;
-    }
-
-    int result = XGetWindowProperty(display,
-                                    GDK_WINDOW_XID(gdk_screen_get_root_window(screen)),
-                                    workareaAtom, 0, G_MAXLONG, False, AnyPropertyType,
-                                    &type, &format, &num, &left, (unsigned char **)&data);
-
-    if ((result == Success) && (data != NULL)) {
-        if (type != None && format == 32) {
-            guint current_desktop = get_current_desktop(screen);
-            if (current_desktop < num / 4) {
-                ret.x = data[current_desktop * 4];
-                ret.y = data[current_desktop * 4 + 1];
-                ret.width = data[current_desktop * 4 + 2];
-                ret.height = data[current_desktop * 4 + 3];
-            }
-        }
-
-        XFree(data);
-    }
-
-    return ret;
-
-}
-
-jfloat getUIScale(GdkScreen* screen) {
-    jfloat uiScale;
-    if (OverrideUIScale > 0.0f) {
-        uiScale = OverrideUIScale;
-    } else {
-        gdouble resolution = gdk_screen_get_resolution(screen);
-        uiScale = (jfloat) (resolution / DEFAULT_DPI);
-        if (int(resolution) == DEFAULT_DPI) {
-            // These legacy settings should only be consulted if the DPI is
-            // 96. They are global and affect all monitors and only allow
-            // integers. And they are not reliable when scaling is
-            // fractional. KDE in Ubuntu 22 sets GDK_SCALE to the floor of
-            // the actual scaling factor. KDE in Ubuntu 24 sets the
-            // Gnome "scaling-factor" instead. Both settings are obsolete in
-            // their respective toolkits and are not trustworthy.
-            char *scale_str = getenv("GDK_SCALE");
-            int gdk_scale = (scale_str == NULL) ? -1 : atoi(scale_str);
-            if (gdk_scale > 0) {
-                uiScale = (jfloat) gdk_scale;
-            } else {
-                guint gnome_scale = glass_settings_get_guint_opt("org.gnome.desktop.interface",
-                                                                 "scaling-factor", 0);
-                if (gnome_scale > 0) {
-                    uiScale = (jfloat) gnome_scale;
-                }
-            }
-        }
-    }
-    return uiScale;
-}
+jfloat getUIScale(GdkScreen* screen) { return 1.0f; }
 
 static jobject createJavaScreen(JNIEnv* env, GdkScreen* screen, gint monitor_idx)
 {
-    GdkRectangle workArea = get_screen_workarea(screen);
+    GdkRectangle workArea;
+    gdk_screen_get_monitor_workarea(screen, monitor_idx, &workArea);
     LOG4("Work Area: x:%d, y:%d, w:%d, h:%d\n", workArea.x, workArea.y, workArea.width, workArea.height);
 
     GdkRectangle monitor_geometry;
@@ -152,6 +53,7 @@ static jobject createJavaScreen(JNIEnv* env, GdkScreen* screen, gint monitor_idx
     gdk_rectangle_intersect(&workArea, &monitor_geometry, &working_monitor_geometry);
 
     jfloat uiScale = getUIScale(screen);
+    jfloat outputScale = gdk_screen_get_monitor_scale_factor(screen, monitor_idx);
 
 
     jint mx = monitor_geometry.x / uiScale;
@@ -194,7 +96,7 @@ static jobject createJavaScreen(JNIEnv* env, GdkScreen* screen, gint monitor_idx
                                      wx, wy, ww, wh,
 
                                      dpiX, dpiY,
-                                     uiScale, uiScale, uiScale, uiScale);
+                                     uiScale, uiScale, outputScale, outputScale);
 
     JNI_EXCEPTION_TO_CPP(env);
     return jScreen;

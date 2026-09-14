@@ -36,13 +36,10 @@
 #include <com_sun_glass_ui_Window_Level.h>
 #include <com_sun_glass_ui_gtk_GtkWindow.h>
 
-#include <X11/extensions/shape.h>
 #include <cairo.h>
-#include <cairo-xlib.h>
-#include <gdk/gdkx.h>
 #include <gdk/gdk.h>
+#include <gdk/gdkwayland.h>
 #ifdef GLASS_GTK3
-#include <gtk/gtkx.h>
 #endif
 
 #include <string.h>
@@ -395,11 +392,8 @@ void WindowContextBase::process_mouse_scroll(GdkEventScroll* event) {
 
     // converting direction to change in pixels
     switch (event->direction) {
-#if GTK_CHECK_VERSION(3, 4, 0)
         case GDK_SCROLL_SMOOTH:
-            //FIXME 3.4 ???
             break;
-#endif
         case GDK_SCROLL_UP:
             dy = 1;
             break;
@@ -517,6 +511,10 @@ void WindowContextBase::paint(void* data, jint width, jint height) {
             CAIRO_FORMAT_ARGB32,
             width, height, width * 4);
 
+    if (GDK_IS_WAYLAND_DISPLAY(gdk_display_get_default())) {
+        int scale = gdk_window_get_scale_factor(gdk_window);
+        cairo_surface_set_device_scale(cairo_surface, scale, scale);
+    }
     applyShapeMask(data, width, height);
 
     cairo_set_source_surface(context, cairo_surface, 0, 0);
@@ -525,6 +523,9 @@ void WindowContextBase::paint(void* data, jint width, jint height) {
 
 #ifdef GLASS_GTK3
     gdk_window_end_paint(gdk_window);
+    if (GDK_IS_WAYLAND_DISPLAY(gdk_display_get_default())) {
+        gdk_frame_clock_request_phase(gdk_window_get_frame_clock(gdk_window), GDK_FRAME_CLOCK_PHASE_AFTER_PAINT);
+    }
     cairo_region_destroy(region);
 #endif
 
@@ -545,6 +546,9 @@ void WindowContextBase::remove_child(WindowContextTop* child) {
 void WindowContextBase::set_visible(bool visible) {
     if (visible) {
         gtk_widget_show(gtk_widget);
+        if (GDK_IS_WAYLAND_DISPLAY(gdk_display_get_default())) {
+            gdk_wayland_window_set_application_id(gdk_window, "net.modtale.launcher");
+        }
     } else {
         gtk_widget_hide(gtk_widget);
         if (jview && is_mouse_entered) {
@@ -687,6 +691,21 @@ WindowFrameExtents WindowContextTop::normal_extents = {0, 0, 0, 0};
 WindowFrameExtents WindowContextTop::utility_extents = {0, 0, 0, 0};
 
 
+static void event_output_scale(GObject* widget, GParamSpec* property, gpointer data) {
+    (void)widget; (void)property;
+    WindowContextTop* ctx = static_cast<WindowContextTop*>(data);
+    GdkWindow* window = ctx->get_gdk_window();
+    if (!window) return;
+    int scale = gdk_window_get_scale_factor(window);
+    if (GPOINTER_TO_INT(g_object_get_data(G_OBJECT(window), "modtale-output-scale")) == scale) return;
+    g_object_set_data(G_OBJECT(window), "modtale-output-scale", GINT_TO_POINTER(scale));
+    jobject jwindow = ctx->get_jwindow();
+    if (jwindow) {
+        mainEnv->CallVoidMethod(jwindow, jWindowNotifyScaleChanged, 1.0f, 1.0f, (jfloat)scale, (jfloat)scale);
+        CHECK_JNI_EXCEPTION(mainEnv)
+    }
+}
+
 static void event_realize(GtkWidget* self, gpointer user_data) {
     WindowContextTop *ctx = ((WindowContextTop *) user_data);
     ctx->process_realize();
@@ -762,17 +781,13 @@ WindowContextTop::WindowContextTop(jobject _jwindow, WindowContext* _owner, long
         gtk_window_set_type_hint(GTK_WINDOW(gtk_widget), GDK_WINDOW_TYPE_HINT_UTILITY);
     }
 
-    const char* wm_name = gdk_x11_screen_get_window_manager_name(gdk_screen_get_default());
+    const char* wm_name = "Wayland";
     wmanager = (g_strcmp0("Compiz", wm_name) == 0) ? COMPIZ : UNKNOWN;
 
 //    glong xdisplay = (glong)mainEnv->GetStaticLongField(jApplicationCls, jApplicationDisplay);
 //    gint  xscreenID = (gint)mainEnv->GetStaticIntField(jApplicationCls, jApplicationScreen);
     glong xvisualID = (glong)mainEnv->GetStaticLongField(jApplicationCls, jApplicationVisualID);
 
-    if (xvisualID != 0) {
-        GdkVisual *visual = gdk_x11_screen_lookup_visual(gdk_screen_get_default(), xvisualID);
-        glass_gtk_window_configure_from_visual(gtk_widget, visual);
-    }
 
     gtk_widget_set_events(gtk_widget, GDK_FILTERED_EVENTS_MASK);
     gtk_widget_set_app_paintable(gtk_widget, TRUE);
@@ -800,23 +815,7 @@ void WindowContextTop::detach_from_java() {
 }
 
 void WindowContextTop::request_frame_extents() {
-    Display *display = GDK_DISPLAY_XDISPLAY(gdk_window_get_display(gdk_window));
-    static Atom rfeAtom = XInternAtom(display, "_NET_REQUEST_FRAME_EXTENTS", False);
-
-    if (rfeAtom != None) {
-        XClientMessageEvent clientMessage;
-        memset(&clientMessage, 0, sizeof(clientMessage));
-
-        clientMessage.type = ClientMessage;
-        clientMessage.window = GDK_WINDOW_XID(gdk_window);
-        clientMessage.message_type = rfeAtom;
-        clientMessage.format = 32;
-
-        XSendEvent(display, XDefaultRootWindow(display), False,
-                   SubstructureRedirectMask | SubstructureNotifyMask,
-                   (XEvent *) &clientMessage);
-        XFlush(display);
-    }
+    // Wayland compositor decorations have no global frame extents.
 }
 
 void WindowContextTop::update_frame_extents() {
@@ -976,6 +975,10 @@ void WindowContextTop::process_realize() {
     gdk_window_set_events(gdk_window, GDK_FILTERED_EVENTS_MASK);
     g_object_set_data_full(G_OBJECT(gdk_window), GDK_WINDOW_DATA_CONTEXT, this, NULL);
     gdk_window_register_dnd(gdk_window);
+    if (GDK_IS_WAYLAND_DISPLAY(gdk_display_get_default())) {
+        g_signal_connect(gtk_widget, "notify::scale-factor", G_CALLBACK(event_output_scale), this);
+        event_output_scale(G_OBJECT(gtk_widget), NULL, this);
+    }
 
     if (gdk_windowManagerFunctions) {
         gdk_window_set_functions(gdk_window, gdk_windowManagerFunctions);
@@ -1023,7 +1026,7 @@ void WindowContextTop::process_configure(GdkEventConfigure* event) {
     geometry.view_y = origin_y - root_y;
     notify_window_move();
 
-    glong to_screen = getScreenPtrForLocation(geometry.x, geometry.y);
+    glong to_screen = gdk_screen_get_monitor_at_window(gdk_screen_get_default(), gdk_window);
     if (to_screen != -1) {
         if (to_screen != screen) {
             if (jwindow) {

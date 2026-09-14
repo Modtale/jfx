@@ -128,23 +128,3 @@ void wrapped_g_settings_schema_unref (GSettingsSchema *schema)
 
 }
 
-static void (*_gdk_x11_display_set_window_scale) (GdkDisplay *display, gint scale);
-
-// Note added in libgdk 3.10 which is > our OEL 7.0 version of 3.8
-void wrapped_gdk_x11_display_set_window_scale (GdkDisplay *display,
-                                  gint scale)
-{
-#if GTK_CHECK_VERSION(3, 0, 0)
-    if(_gdk_x11_display_set_window_scale == NULL) {
-        _gdk_x11_display_set_window_scale = dlsym(RTLD_DEFAULT, "gdk_x11_display_set_window_scale");
-        if (gtk_verbose && _gdk_x11_display_set_window_scale) {
-            fprintf(stderr, "loaded gdk_x11_display_set_window_scale\n"); fflush(stderr);
-        }
-    }
-#endif
-
-    if(_gdk_x11_display_set_window_scale != NULL) {
-        (*_gdk_x11_display_set_window_scale)(display, scale);
-    }
-}
-

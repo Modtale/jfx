@@ -28,9 +28,7 @@
 #include <jni.h>
 
 #include <stdint.h>
-#include <X11/Xlib.h>
 #include <gdk/gdk.h>
-#include <gdk/gdkx.h>
 #include <gtk/gtk.h>
 
 #include "wrapped.h"
@@ -178,7 +176,8 @@ private:
     extern jmethodID jWindowNotifyFocus; // com.sun.glass.ui.Window#notifyFocus (I)V
     extern jmethodID jWindowNotifyFocusDisabled; // com.sun.glass.ui.Window#notifyFocusDisabled ()V
     extern jmethodID jWindowNotifyFocusUngrab; // com.sun.glass.ui.Window#notifyFocusUngrab ()V
-    extern jmethodID jWindowNotifyMoveToAnotherScreen; // com.sun.glass.ui.Window#notifyMoveToAnotherScreen (Lcom/sun/glass/ui/Screen;)V
+    extern jmethodID jWindowNotifyMoveToAnotherScreen;
+extern jmethodID jWindowNotifyScaleChanged; // com.sun.glass.ui.Window#notifyMoveToAnotherScreen (Lcom/sun/glass/ui/Screen;)V
     extern jmethodID jWindowNotifyDelegatePtr; //com.sun.glass.ui.Window#notifyDelegatePtr (J)V
     extern jmethodID jWindowNotifyLevelChanged; //com.sun.glass.ui.Window#notifyLevelChanged (I)V
 
@@ -348,8 +347,7 @@ glass_gdk_window_get_size(GdkWindow *window, gint *w, gint *h);
 void
 glass_gdk_display_get_pointer(GdkDisplay* display, gint* x, gint *y);
 
-void
-glass_gdk_x11_display_set_window_scale(GdkDisplay *display, gint scale);
+
 
 gboolean
 glass_configure_window_transparency(GtkWidget *window, gboolean transparent);

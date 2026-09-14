@@ -2353,7 +2353,7 @@ project(":graphics") {
 
     dependencies {
         antlr group: "org.antlr", name: "antlr4", version: "${antlr4Version}", classifier: "complete"
-        testImplementation project(":base").sourceSets.test.output
+        testImplementation rootProject.project(":base").sourceSets.test.output
         implementation project(':base')
     }
 
@@ -2874,8 +2874,8 @@ project(":controls") {
     commonModuleSetup(project, [ 'base', 'graphics', 'controls' ])
 
     dependencies {
-        testImplementation project(":graphics").sourceSets.test.output
-        testImplementation project(":base").sourceSets.test.output
+        testImplementation rootProject.project(":graphics").sourceSets.test.output
+        testImplementation rootProject.project(":base").sourceSets.test.output
         implementation project(':base')
         implementation project(':graphics')
     }
@@ -2972,9 +2972,9 @@ project(":incubator.input") {
     ])
 
     dependencies {
-        testImplementation project(":base").sourceSets.test.output
-        testImplementation project(":graphics").sourceSets.test.output
-        testImplementation project(":controls").sourceSets.test.output
+        testImplementation rootProject.project(":base").sourceSets.test.output
+        testImplementation rootProject.project(":graphics").sourceSets.test.output
+        testImplementation rootProject.project(":controls").sourceSets.test.output
         implementation project(':base')
         implementation project(':graphics')
         implementation project(':controls')
@@ -3029,10 +3029,10 @@ project(":incubator.richtext") {
     ])
 
     dependencies {
-        testImplementation project(":base").sourceSets.test.output
-        testImplementation project(":graphics").sourceSets.test.output
-        testImplementation project(":controls").sourceSets.test.output
-        testImplementation project(":incubator.input").sourceSets.test.output
+        testImplementation rootProject.project(":base").sourceSets.test.output
+        testImplementation rootProject.project(":graphics").sourceSets.test.output
+        testImplementation rootProject.project(":controls").sourceSets.test.output
+        testImplementation rootProject.project(":incubator.input").sourceSets.test.output
         implementation project(':base')
         implementation project(':graphics')
         implementation project(':controls')
@@ -3212,8 +3212,8 @@ project(":fxml") {
 
 
     dependencies {
-        testImplementation project(":graphics").sourceSets.test.output
-        testImplementation project(":base").sourceSets.test.output
+        testImplementation rootProject.project(":graphics").sourceSets.test.output
+        testImplementation rootProject.project(":base").sourceSets.test.output
         implementation project(":base")
         implementation project(":graphics")
     }
@@ -3906,7 +3906,7 @@ project(":web") {
         implementation project(":graphics")
         implementation project(":controls")
         implementation project(":media")
-        testImplementation project(":base").sourceSets.test.output
+        testImplementation rootProject.project(":base").sourceSets.test.output
     }
 
     compileJava.dependsOn updateCacheIfNeeded
@@ -4220,10 +4220,10 @@ project(":systemTests") {
     project.ext.moduleName = "systemTests"
 
     dependencies {
-        testImplementation project(":graphics").sourceSets.test.output
-        testImplementation project(":base").sourceSets.test.output
-        testImplementation project(":controls").sourceSets.test.output
-        testImplementation project(":swing").sourceSets.test.output
+        testImplementation rootProject.project(":graphics").sourceSets.test.output
+        testImplementation rootProject.project(":base").sourceSets.test.output
+        testImplementation rootProject.project(":controls").sourceSets.test.output
+        testImplementation rootProject.project(":swing").sourceSets.test.output
     }
 
     def dependentProjects = [

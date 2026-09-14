@@ -74,6 +74,7 @@ jmethodID jWindowNotifyFocus;
 jmethodID jWindowNotifyFocusDisabled;
 jmethodID jWindowNotifyFocusUngrab;
 jmethodID jWindowNotifyMoveToAnotherScreen;
+jmethodID jWindowNotifyScaleChanged;
 jmethodID jWindowNotifyLevelChanged;
 jmethodID jWindowIsEnabled;
 jmethodID jWindowNotifyDelegatePtr;
@@ -152,7 +153,6 @@ JNI_OnLoad(JavaVM *jvm, void *reserved)
 
     JNIEnv *env;
     jclass clazz;
-    Display* display;
 
     javaVM = jvm;
     if (jvm->GetEnv((void **)&env, JNI_VERSION_1_6)) {
@@ -258,6 +258,7 @@ JNI_OnLoad(JavaVM *jvm, void *reserved)
     jWindowNotifyFocusUngrab = env->GetMethodID(clazz, "notifyFocusUngrab", "()V");
     if (env->ExceptionCheck()) return JNI_ERR;
     jWindowNotifyMoveToAnotherScreen = env->GetMethodID(clazz, "notifyMoveToAnotherScreen", "(Lcom/sun/glass/ui/Screen;)V");
+    jWindowNotifyScaleChanged = env->GetMethodID(clazz, "notifyScaleChanged", "(FFFF)V");
     if (env->ExceptionCheck()) return JNI_ERR;
     jWindowNotifyLevelChanged = env->GetMethodID(clazz, "notifyLevelChanged", "(I)V");
     if (env->ExceptionCheck()) return JNI_ERR;
@@ -826,19 +827,7 @@ glass_gdk_drag_context_get_dest_window (GdkDragContext * context)
 }
 
 
-void glass_gdk_x11_display_set_window_scale (GdkDisplay *display,
-                          gint scale)
-{
-#ifdef GLASS_GTK3
-    // Optional call, if it does not exist then GTK3 is not yet
-    // doing automatic scaling of coordinates so we do not need
-    // to override it.
-    wrapped_gdk_x11_display_set_window_scale(display, scale);
-#else
-    (void) display;
-    (void) scale;
-#endif
-}
+
 
 //-------- Glass utility ----------------------------------------
 

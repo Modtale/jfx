@@ -33,7 +33,6 @@
 #include <cstring>
 
 #include <gtk/gtk.h>
-#include <gdk/gdkx.h>
 #include <gdk/gdkkeysyms.h>
 
 /************************* COMMON *********************************************/

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,28 +23,16 @@
  * questions.
  */
 
-#ifndef WRAPPED_H
-#define        WRAPPED_H
-
-#ifdef __cplusplus
-extern "C" {
+#ifndef MODTALE_WAYLAND_H
+#define MODTALE_WAYLAND_H
+#include "PrismES2Defs.h"
+jlong prism_wayland_initialize(JNIEnv *, jintArray);
+jlong prism_wayland_pixel_format(JNIEnv *, jintArray);
+jlong prism_wayland_drawable(jlong, jlong);
+jboolean prism_wayland_swap(jlong);
+void prism_wayland_release_drawable(jlong);
+jlong prism_wayland_context(jlong, jlong, jboolean);
+jlong prism_wayland_handle(jlong);
+void prism_wayland_make_current(jlong, jlong);
+void prism_wayland_destroy_context(ContextInfo *);
 #endif
-
-GSettingsSchemaSource * wrapped_g_settings_schema_source_get_default (void);
-
-GSettingsSchema *
-wrapped_g_settings_schema_source_lookup (GSettingsSchemaSource *source,
-                                 const gchar *schema_id,
-                                 gboolean recursive);
-
-gboolean wrapped_g_settings_schema_has_key (GSettingsSchema *schema, const gchar *name);
-
-void wrapped_g_settings_schema_unref (GSettingsSchema *schema);
-
-
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif        /* WRAPPED_H */

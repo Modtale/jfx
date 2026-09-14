@@ -1,0 +1,43 @@
+name: Modtale JavaFX graphics
+
+on:
+  push:
+    branches: [jfx26]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux
+          - os: ubuntu-24.04-arm
+            platform: linux-aarch64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-java@v6.0.1
+        with:
+          distribution: temurin
+          java-version: 25
+      - uses: gradle/actions/setup-gradle@v6.3.0
+        with:
+          gradle-version: '9.7.1'
+      - run: sudo bash modtale/install_build_dependencies.sh
+      - name: Build graphics artifact
+        shell: bash
+        run: |
+          curl --fail --location --retry 3 --output base.jar "https://repo.maven.apache.org/maven2/org/openjfx/javafx-graphics/26.0.2/javafx-graphics-26.0.2-${{ matrix.platform }}.jar"
+          python3 modtale/build_graphics.py --base-jar base.jar --output "dist/javafx-graphics-26.0.2-modtale.1-${{ matrix.platform }}.jar" --java-home "$JAVA_HOME" --gradle "$(command -v gradle)"
+          cd dist
+          sha256sum *.jar > SHA256SUMS-${{ matrix.platform }}
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: javafx-graphics-${{ matrix.platform }}
+          path: dist/*
+          if-no-files-found: error

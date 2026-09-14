@@ -31,6 +31,9 @@
 #include <math.h>
 
 #include "PrismES2Defs.h"
+#ifdef MODTALE_WAYLAND
+#include "Wayland.h"
+#endif
 
 extern char *strJavaToC(JNIEnv *env, jstring str);
 
@@ -67,6 +70,9 @@ void initializeCtxInfo(ContextInfo *ctxInfo) {
     if (ctxInfo == NULL) {
         return;
     }
+#ifdef MODTALE_WAYLAND
+    if (ctxInfo->waylandContext) prism_wayland_destroy_context(ctxInfo);
+#endif
     // Initialize structure to all zeros
     memset(ctxInfo, 0, sizeof (ContextInfo));
 }
@@ -111,6 +117,9 @@ void deleteCtxInfo(ContextInfo *ctxInfo) {
         eglDestroyContext(ctxInfo->display, ctxInfo->context);
 #endif
     }
+#endif
+#ifdef MODTALE_WAYLAND
+    if (ctxInfo->waylandContext) prism_wayland_destroy_context(ctxInfo);
 #endif
     // Initialize structure to all zeros
     memset(ctxInfo, 0, sizeof (ContextInfo));
