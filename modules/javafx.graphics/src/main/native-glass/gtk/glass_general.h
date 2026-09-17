@@ -350,6 +350,9 @@ glass_gdk_display_get_pointer(GdkDisplay* display, gint* x, gint *y);
 
 
 gboolean
+glass_supports_transparent_windows();
+
+gboolean
 glass_configure_window_transparency(GtkWidget *window, gboolean transparent);
 
 GdkPixbuf *

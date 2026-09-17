@@ -8,7 +8,7 @@ import shutil
 import subprocess
 import zipfile
 
-VERSION = "26.0.2-modtale.1"
+VERSION = "26.0.2-modtale.2"
 LIBRARIES = ("libglass.so", "libglassgtk3.so", "libprism_es2.so")
 
 

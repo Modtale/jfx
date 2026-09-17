@@ -26,6 +26,9 @@
 
 #include <jni.h>
 #include <gtk/gtk.h>
+#ifdef GLASS_GTK3
+#include <gdk/gdkwayland.h>
+#endif
 
 char const * const GDK_WINDOW_DATA_CONTEXT = "glass_window_context";
 
@@ -677,24 +680,38 @@ glass_gtk_window_configure_from_visual(GtkWidget *widget, GdkVisual *visual) {
     glass_widget_set_visual(widget, visual);
 }
 
+gboolean
+glass_supports_transparent_windows() {
+    GdkDisplay *display = gdk_display_get_default();
+    GdkScreen *screen = gdk_screen_get_default();
+    if (!display || !screen) {
+        return FALSE;
+    }
+#ifdef GLASS_GTK3
+    // Wayland composites alpha surfaces natively. GDK's supports_composite
+    // query tests the XComposite extension and returns false on Wayland.
+    if (GDK_IS_WAYLAND_DISPLAY(display)) {
+        return gdk_screen_get_rgba_visual(screen) != NULL;
+    }
+#endif
+    return gdk_display_supports_composite(display) && gdk_screen_is_composited(screen);
+}
+
 static gboolean
 configure_transparent_window(GtkWidget *window) {
     GdkScreen *default_screen = gdk_screen_get_default();
-    GdkDisplay *default_display = gdk_display_get_default();
 
 #ifdef GLASS_GTK3
         GdkVisual *visual = gdk_screen_get_rgba_visual(default_screen);
         if (visual
-                && gdk_display_supports_composite(default_display)
-                && gdk_screen_is_composited(default_screen)) {
+                && glass_supports_transparent_windows()) {
             glass_widget_set_visual(window, visual);
             return TRUE;
         }
 #else
         GdkColormap *colormap = gdk_screen_get_rgba_colormap(default_screen);
         if (colormap
-                && gdk_display_supports_composite(default_display)
-                && gdk_screen_is_composited(default_screen)) {
+                && glass_supports_transparent_windows()) {
             gtk_widget_set_colormap(window, colormap);
             return TRUE;
         }

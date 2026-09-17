@@ -374,8 +374,7 @@ JNIEXPORT jboolean JNICALL Java_com_sun_glass_ui_gtk_GtkApplication__1supportsTr
     (void)env;
     (void)obj;
 
-    return gdk_display_supports_composite(gdk_display_get_default())
-            && gdk_screen_is_composited(gdk_screen_get_default());
+    return glass_supports_transparent_windows();
 }
 
 /*

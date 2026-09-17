@@ -33,9 +33,14 @@ jobs:
         shell: bash
         run: |
           curl --fail --location --retry 3 --output base.jar "https://repo.maven.apache.org/maven2/org/openjfx/javafx-graphics/26.0.2/javafx-graphics-26.0.2-${{ matrix.platform }}.jar"
-          python3 modtale/build_graphics.py --base-jar base.jar --output "dist/javafx-graphics-26.0.2-modtale.1-${{ matrix.platform }}.jar" --java-home "$JAVA_HOME" --gradle "$(command -v gradle)"
+          python3 modtale/build_graphics.py --base-jar base.jar --output "dist/javafx-graphics-26.0.2-modtale.2-${{ matrix.platform }}.jar" --java-home "$JAVA_HOME" --gradle "$(command -v gradle)"
           cd dist
           sha256sum *.jar > SHA256SUMS-${{ matrix.platform }}
+      - name: Test Wayland popup transparency
+        shell: bash
+        run: |
+          sudo apt-get install -y --no-install-recommends weston libgl1-mesa-dri
+          bash modtale/test_popups.sh "dist/javafx-graphics-26.0.2-modtale.2-${{ matrix.platform }}.jar" "${{ matrix.platform }}"
       - uses: actions/upload-artifact@v7.0.1
         with:
           name: javafx-graphics-${{ matrix.platform }}
